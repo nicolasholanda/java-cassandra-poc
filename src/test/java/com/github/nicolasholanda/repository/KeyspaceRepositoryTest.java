@@ -3,8 +3,10 @@ package com.github.nicolasholanda.repository;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
 import com.github.nicolasholanda.config.CassandraConnector;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
+import org.testcontainers.cassandra.CassandraContainer;
 
 import java.util.List;
 
@@ -14,13 +16,25 @@ public class KeyspaceRepositoryTest {
 
     private Session session;
     private KeyspaceRepository schemaRepository;
+    private static CassandraContainer cassandraContainer;
 
     @Before
     public void connect() {
+        if (cassandraContainer == null) {
+            cassandraContainer = new CassandraContainer("cassandra:3.11.2");
+            cassandraContainer.start();
+        }
         CassandraConnector client = new CassandraConnector();
-        client.connect("127.0.0.1", 9142);
+        client.connect(cassandraContainer.getHost(), cassandraContainer.getFirstMappedPort());
         session = client.getSession();
         schemaRepository = new KeyspaceRepository(session);
+    }
+
+    @AfterClass
+    public static void tearDown() {
+        if (cassandraContainer != null) {
+            cassandraContainer.stop();
+        }
     }
 
     @Test
