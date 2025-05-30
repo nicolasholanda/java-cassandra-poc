@@ -1,6 +1,9 @@
 package com.github.nicolasholanda.repository;
 
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.github.nicolasholanda.model.Book;
+import java.util.UUID;
 
 public class BookRepository {
 
@@ -25,5 +28,42 @@ public class BookRepository {
     public void deleteTable() {
         String query = "DROP TABLE IF EXISTS " + KEYSPACE + "." + TABLE_NAME + ";";
         session.execute(query);
+    }
+
+    public void insertBook(Book book) {
+        String query = String.format("INSERT INTO %s.%s (id, author, title, subject) VALUES (?, ?, ?, ?);", KEYSPACE, TABLE_NAME);
+        session.execute(session.prepare(query).bind(
+                book.getId(),
+                book.getAuthor(),
+                book.getTitle(),
+                book.getSubject()
+        ));
+    }
+
+    public Book getBookById(UUID id) {
+        String query = String.format("SELECT id, author, title, subject FROM %s.%s WHERE id = ?;", KEYSPACE, TABLE_NAME);
+        Row row = session.execute(session.prepare(query).bind(id)).one();
+        if (row == null) return null;
+        return new Book(
+                row.getUUID("id"),
+                row.getString("author"),
+                row.getString("title"),
+                row.getString("subject")
+        );
+    }
+
+    public void updateBook(Book book) {
+        String query = String.format("UPDATE %s.%s SET author = ?, title = ?, subject = ? WHERE id = ?;", KEYSPACE, TABLE_NAME);
+        session.execute(session.prepare(query).bind(
+                book.getAuthor(),
+                book.getTitle(),
+                book.getSubject(),
+                book.getId()
+        ));
+    }
+
+    public void deleteBook(UUID id) {
+        String query = String.format("DELETE FROM %s.%s WHERE id = ?;", KEYSPACE, TABLE_NAME);
+        session.execute(session.prepare(query).bind(id));
     }
 }
