@@ -40,6 +40,17 @@ public class BookRepository {
         ));
     }
 
+    public void insertBookWithTTL(Book book, int ttlSeconds) {
+        String query = String.format("INSERT INTO %s.%s (id, author, title, subject) VALUES (?, ?, ?, ?) USING TTL ?;", KEYSPACE, TABLE_NAME);
+        session.execute(session.prepare(query).bind(
+                book.getId(),
+                book.getAuthor(),
+                book.getTitle(),
+                book.getSubject(),
+                ttlSeconds
+        ));
+    }
+
     public Book getBookById(UUID id) {
         String query = String.format("SELECT id, author, title, subject FROM %s.%s WHERE id = ?;", KEYSPACE, TABLE_NAME);
         Row row = session.execute(session.prepare(query).bind(id)).one();

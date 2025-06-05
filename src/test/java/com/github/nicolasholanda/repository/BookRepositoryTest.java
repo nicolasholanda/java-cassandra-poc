@@ -4,6 +4,7 @@ import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
 import com.github.nicolasholanda.config.CassandraConnector;
+import com.github.nicolasholanda.model.Book;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,8 +12,7 @@ import org.testcontainers.cassandra.CassandraContainer;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class BookRepositoryTest {
 
@@ -59,4 +59,18 @@ public class BookRepositoryTest {
         assertTrue(columnNames.contains("author"));
         assertTrue(columnNames.contains("subject"));
     }
+
+    @Test
+    public void whenInsertingBookWithTTL_thenExpiresAfterTTL() throws InterruptedException {
+        bookRepository.deleteTable();
+        bookRepository.createTable();
+        Book book = new Book(java.util.UUID.randomUUID(), "Author TTL", "Book TTL", "Test TTL");
+        bookRepository.insertBookWithTTL(book, 2);
+        Book found = bookRepository.getBookById(book.getId());
+        assertNotNull(found);
+        Thread.sleep(3000);
+        Book expired = bookRepository.getBookById(book.getId());
+        assertNull(expired);
+    }
 }
+
