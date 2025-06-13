@@ -3,6 +3,7 @@ package com.github.nicolasholanda.repository;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.github.nicolasholanda.config.CassandraConnector;
 import com.github.nicolasholanda.model.BooksByAuthor;
 import org.junit.AfterClass;
@@ -70,5 +71,30 @@ public class BooksByAuthorRepositoryTest {
         assertEquals("id-123", first.getBookId());
         assertEquals("Book Title Test", first.getBookTitle());
     }
-}
 
+    @Test
+    public void testFindByBookTitleWithAllowFilteringAndSecondaryIndex() {
+        booksByAuthorRepository.deleteTable();
+        booksByAuthorRepository.createTable();
+        booksByAuthorRepository.createSecondaryIndexOnBookTitle();
+        BooksByAuthor book1 = new BooksByAuthor("Author A", "id-1", "Title X");
+        BooksByAuthor book2 = new BooksByAuthor("Author B", "id-2", "Title Y");
+        BooksByAuthor book3 = new BooksByAuthor("Author C", "id-3", "Title X");
+        booksByAuthorRepository.insert(book1);
+        booksByAuthorRepository.insert(book2);
+        booksByAuthorRepository.insert(book3);
+        List<BooksByAuthor> found = booksByAuthorRepository.findByBookTitleWithAllowFiltering("Title X");
+        assertEquals(2, found.size());
+        assertTrue(found.stream().anyMatch(b -> b.getAuthor().equals("Author A")));
+        assertTrue(found.stream().anyMatch(b -> b.getAuthor().equals("Author C")));
+    }
+
+    @Test(expected = InvalidQueryException.class)
+    public void testQueryByNonPrimaryKeyColumnWithoutAllowFilteringShouldFail() {
+        booksByAuthorRepository.deleteTable();
+        booksByAuthorRepository.createTable();
+        BooksByAuthor book = new BooksByAuthor("Test Author", "id-999", "Special Title");
+        booksByAuthorRepository.insert(book);
+        session.execute("SELECT * FROM " + KEYSPACE_NAME + "." + TABLE_NAME + " WHERE book_title = 'Special Title';");
+    }
+}

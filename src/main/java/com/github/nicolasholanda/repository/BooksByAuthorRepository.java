@@ -51,4 +51,22 @@ public class BooksByAuthorRepository {
         }
         return books;
     }
+
+    public void createSecondaryIndexOnBookTitle() {
+        String query = String.format("CREATE INDEX IF NOT EXISTS idx_book_title ON %s.%s (book_title);", KEYSPACE, TABLE_NAME);
+        session.execute(query);
+    }
+
+    public List<BooksByAuthor> findByBookTitleWithAllowFiltering(String bookTitle) {
+        String query = String.format("SELECT author, book_id, book_title FROM %s.%s WHERE book_title = ? ALLOW FILTERING;", KEYSPACE, TABLE_NAME);
+        List<BooksByAuthor> books = new ArrayList<>();
+        for (Row row : session.execute(session.prepare(query).bind(bookTitle))) {
+            books.add(new BooksByAuthor(
+                    row.getString("author"),
+                    row.getString("book_id"),
+                    row.getString("book_title")
+            ));
+        }
+        return books;
+    }
 }
