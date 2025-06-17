@@ -10,7 +10,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.testcontainers.cassandra.CassandraContainer;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.Assert.*;
 
@@ -22,7 +24,7 @@ public class BookRepositoryTest {
     private static CassandraContainer cassandraContainer;
 
     private static final String KEYSPACE_NAME = "library";
-    private static final String BOOKS = "books";
+    private static final String TABLE_NAME = "books";
 
     @Before
     public void connect() {
@@ -49,7 +51,7 @@ public class BookRepositoryTest {
     public void whenCreatingATable_thenCreatedCorrectly() {
         bookRepository.deleteTable();
         bookRepository.createTable();
-        ResultSet result = session.execute("SELECT * FROM " + KEYSPACE_NAME + "." + BOOKS + ";");
+        ResultSet result = session.execute("SELECT * FROM " + KEYSPACE_NAME + "." + TABLE_NAME + ";");
 
         List<String> columnNames = result.getColumnDefinitions().asList().stream()
                 .map(ColumnDefinitions.Definition::getName).toList();
@@ -72,5 +74,23 @@ public class BookRepositoryTest {
         Book expired = bookRepository.getBookById(book.getId());
         assertNull(expired);
     }
-}
 
+    @Test
+    public void testInsertBooksBatch() {
+        bookRepository.deleteTable();
+        bookRepository.createTable();
+        Book book1 = new Book(UUID.randomUUID(), "Author 1", "Title 1", "Subject 1");
+        Book book2 = new Book(UUID.randomUUID(), "Author 2", "Title 2", "Subject 2");
+        Book book3 = new Book(UUID.randomUUID(), "Author 3", "Title 3", "Subject 3");
+        bookRepository.insertBooksBatch(Arrays.asList(book1, book2, book3));
+        Book found1 = bookRepository.getBookById(book1.getId());
+        Book found2 = bookRepository.getBookById(book2.getId());
+        Book found3 = bookRepository.getBookById(book3.getId());
+        assertNotNull(found1);
+        assertNotNull(found2);
+        assertNotNull(found3);
+        assertEquals(book1.getTitle(), found1.getTitle());
+        assertEquals(book2.getTitle(), found2.getTitle());
+        assertEquals(book3.getTitle(), found3.getTitle());
+    }
+}

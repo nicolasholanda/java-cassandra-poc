@@ -1,8 +1,11 @@
 package com.github.nicolasholanda.repository;
 
+import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.github.nicolasholanda.model.Book;
+import java.util.List;
 import java.util.UUID;
 
 public class BookRepository {
@@ -76,5 +79,20 @@ public class BookRepository {
     public void deleteBook(UUID id) {
         String query = String.format("DELETE FROM %s.%s WHERE id = ?;", KEYSPACE, TABLE_NAME);
         session.execute(session.prepare(query).bind(id));
+    }
+
+    public void insertBooksBatch(List<Book> books) {
+        String query = String.format("INSERT INTO %s.%s (id, author, title, subject) VALUES (?, ?, ?, ?);", KEYSPACE, TABLE_NAME);
+        PreparedStatement prepared = session.prepare(query);
+        BatchStatement batch = new BatchStatement();
+        for (Book book : books) {
+            batch.add(prepared.bind(
+                book.getId(),
+                book.getAuthor(),
+                book.getTitle(),
+                book.getSubject()
+            ));
+        }
+        session.execute(batch);
     }
 }
