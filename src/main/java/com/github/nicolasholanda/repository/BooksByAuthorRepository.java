@@ -1,7 +1,6 @@
 package com.github.nicolasholanda.repository;
 
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
+import com.datastax.driver.core.*;
 import com.github.nicolasholanda.model.BooksByAuthor;
 import java.util.ArrayList;
 import java.util.List;
@@ -69,4 +68,29 @@ public class BooksByAuthorRepository {
         }
         return books;
     }
+
+    public List<BooksByAuthor> findByAuthorWithPaging(String author, int pageSize, String pagingState) {
+        String query = String.format("SELECT author, book_id, book_title FROM %s.%s WHERE author = ?;", KEYSPACE, TABLE_NAME);
+        PreparedStatement prepared = session.prepare(query);
+        BoundStatement bound = prepared.bind(author);
+        bound.setFetchSize(pageSize);
+        if (pagingState != null) {
+            bound.setPagingState(PagingState.fromString(pagingState));
+        }
+        ResultSet rs = session.execute(bound);
+        List<BooksByAuthor> books = new ArrayList<>();
+        int remaining = rs.getAvailableWithoutFetching();
+        for (Row row : rs) {
+            books.add(new BooksByAuthor(
+                    row.getString("author"),
+                    row.getString("book_id"),
+                    row.getString("book_title")
+            ));
+            if (--remaining == 0) {
+                break;
+            }
+        }
+        return books;
+    }
 }
+

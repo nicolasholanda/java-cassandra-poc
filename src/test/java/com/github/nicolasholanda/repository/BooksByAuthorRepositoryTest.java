@@ -1,8 +1,6 @@
 package com.github.nicolasholanda.repository;
 
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Session;
+import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.github.nicolasholanda.config.CassandraConnector;
 import com.github.nicolasholanda.model.BooksByAuthor;
@@ -11,6 +9,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.testcontainers.cassandra.CassandraContainer;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -96,5 +95,17 @@ public class BooksByAuthorRepositoryTest {
         BooksByAuthor book = new BooksByAuthor("Test Author", "id-999", "Special Title");
         booksByAuthorRepository.insert(book);
         session.execute("SELECT * FROM " + KEYSPACE_NAME + "." + TABLE_NAME + " WHERE book_title = 'Special Title';");
+    }
+
+    @Test
+    public void testFindByAuthorWithPaging() {
+        booksByAuthorRepository.deleteTable();
+        booksByAuthorRepository.createTable();
+        String author = "Paging Author";
+        for (int i = 1; i <= 7; i++) {
+            booksByAuthorRepository.insert(new BooksByAuthor(author, "id-" + i, "Book Title " + i));
+        }
+        List<BooksByAuthor> firstPage = booksByAuthorRepository.findByAuthorWithPaging(author, 3, null);
+        assertEquals(3, firstPage.size());
     }
 }
