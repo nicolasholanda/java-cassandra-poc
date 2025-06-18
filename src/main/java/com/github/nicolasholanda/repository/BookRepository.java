@@ -9,6 +9,7 @@ import com.github.nicolasholanda.model.Publisher;
 import com.datastax.driver.core.UDTValue;
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayList;
 
 public class BookRepository {
 
@@ -125,5 +126,42 @@ public class BookRepository {
             ));
         }
         session.execute(batch);
+    }
+
+    public void createMaterializedViewByTitle() {
+        String query = "CREATE MATERIALIZED VIEW IF NOT EXISTS " + KEYSPACE + ".books_by_title AS " +
+                "SELECT id, author, title, subject, publisher " +
+                "FROM " + KEYSPACE + "." + TABLE_NAME + " " +
+                "WHERE title IS NOT NULL AND id IS NOT NULL " +
+                "PRIMARY KEY (title, id);";
+        session.execute(query);
+    }
+
+    public void deleteMaterializedViewByTitle() {
+        String query = "DROP MATERIALIZED VIEW IF EXISTS " + KEYSPACE + ".books_by_title;";
+        session.execute(query);
+    }
+
+    public List<Book> findByTitleUsingMaterializedView(String title) {
+        String query = "SELECT id, author, title, subject, publisher FROM " + KEYSPACE + ".books_by_title WHERE title = ?;";
+        List<Book> books = new ArrayList<>();
+        for (Row row : session.execute(session.prepare(query).bind(title))) {
+            Publisher publisher = null;
+            UDTValue publisherUDT = row.getUDTValue("publisher");
+            if (publisherUDT != null) {
+                publisher = new Publisher(
+                    publisherUDT.getString("name"),
+                    publisherUDT.getString("address")
+                );
+            }
+            books.add(new Book(
+                row.getUUID("id"),
+                row.getString("author"),
+                row.getString("title"),
+                row.getString("subject"),
+                publisher
+            ));
+        }
+        return books;
     }
 }

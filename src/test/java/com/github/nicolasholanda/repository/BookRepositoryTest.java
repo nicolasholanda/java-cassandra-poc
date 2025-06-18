@@ -112,4 +112,35 @@ public class BookRepositoryTest {
         assertEquals("Test Publisher", found.getPublisher().getName());
         assertEquals("123 Main St", found.getPublisher().getAddress());
     }
+
+    @Test
+    public void whenUsingMaterializedView_thenCanQueryByTitleEfficiently() {
+        bookRepository.deleteTable();
+        bookRepository.deleteMaterializedViewByTitle();
+        bookRepository.createPublisherUDT();
+        bookRepository.createTable();
+        bookRepository.createMaterializedViewByTitle();
+        
+        Publisher publisher1 = new Publisher("Publisher A", "Address A");
+        Publisher publisher2 = new Publisher("Publisher B", "Address B");
+        
+        Book book1 = new Book(UUID.randomUUID(), "Author 1", "Same Title", "Subject 1", publisher1);
+        Book book2 = new Book(UUID.randomUUID(), "Author 2", "Same Title", "Subject 2", publisher2);
+        Book book3 = new Book(UUID.randomUUID(), "Author 3", "Different Title", "Subject 3", null);
+        
+        bookRepository.insertBook(book1);
+        bookRepository.insertBook(book2);
+        bookRepository.insertBook(book3);
+        
+        List<Book> booksWithSameTitle = bookRepository.findByTitleUsingMaterializedView("Same Title");
+        assertEquals(2, booksWithSameTitle.size());
+        
+        assertTrue(booksWithSameTitle.stream().anyMatch(b -> b.getAuthor().equals("Author 1")));
+        assertTrue(booksWithSameTitle.stream().anyMatch(b -> b.getAuthor().equals("Author 2")));
+        assertTrue(booksWithSameTitle.stream().allMatch(b -> b.getTitle().equals("Same Title")));
+        
+        List<Book> booksWithDifferentTitle = bookRepository.findByTitleUsingMaterializedView("Different Title");
+        assertEquals(1, booksWithDifferentTitle.size());
+        assertEquals("Author 3", booksWithDifferentTitle.get(0).getAuthor());
+    }
 }
