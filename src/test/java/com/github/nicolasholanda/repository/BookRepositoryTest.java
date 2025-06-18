@@ -5,6 +5,7 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
 import com.github.nicolasholanda.config.CassandraConnector;
 import com.github.nicolasholanda.model.Book;
+import com.github.nicolasholanda.model.Publisher;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -92,5 +93,23 @@ public class BookRepositoryTest {
         assertEquals(book1.getTitle(), found1.getTitle());
         assertEquals(book2.getTitle(), found2.getTitle());
         assertEquals(book3.getTitle(), found3.getTitle());
+    }
+
+    @Test
+    public void whenInsertingAndQueryingBookWithPublisher_thenWorksCorrectly() {
+        bookRepository.deleteTable();
+        bookRepository.createPublisherUDT();
+        bookRepository.createTable();
+        Publisher publisher = new Publisher("Test Publisher", "123 Main St");
+        Book book = new Book(UUID.randomUUID(), "Author UDT", "Book Title UDT", "Subject UDT", publisher);
+        bookRepository.insertBook(book);
+        Book found = bookRepository.getBookById(book.getId());
+        assertNotNull(found);
+        assertEquals("Author UDT", found.getAuthor());
+        assertEquals("Book Title UDT", found.getTitle());
+        assertEquals("Subject UDT", found.getSubject());
+        assertNotNull(found.getPublisher());
+        assertEquals("Test Publisher", found.getPublisher().getName());
+        assertEquals("123 Main St", found.getPublisher().getAddress());
     }
 }

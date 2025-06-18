@@ -7,6 +7,7 @@ public class Book {
     private String author;
     private String title;
     private String subject;
+    private Publisher publisher;
 
     public Book() {}
 
@@ -15,6 +16,14 @@ public class Book {
         this.author = author;
         this.title = title;
         this.subject = subject;
+    }
+
+    public Book(UUID id, String author, String title, String subject, Publisher publisher) {
+        this.id = id;
+        this.author = author;
+        this.title = title;
+        this.subject = subject;
+        this.publisher = publisher;
     }
 
     public UUID getId() {
@@ -47,5 +56,13 @@ public class Book {
 
     public void setSubject(String subject) {
         this.subject = subject;
+    }
+
+    public Publisher getPublisher() {
+        return publisher;
+    }
+
+    public void setPublisher(Publisher publisher) {
+        this.publisher = publisher;
     }
 }
