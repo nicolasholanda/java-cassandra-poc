@@ -143,4 +143,50 @@ public class BookRepositoryTest {
         assertEquals(1, booksWithDifferentTitle.size());
         assertEquals("Author 3", booksWithDifferentTitle.get(0).getAuthor());
     }
+
+    @Test
+    public void whenUsingLightweightTransactionInsert_thenConditionalInsertWorks() {
+        bookRepository.deleteTable();
+        bookRepository.createPublisherUDT();
+        bookRepository.createTable();
+        
+        UUID bookId = UUID.randomUUID();
+        Book book = new Book(bookId, "Author LWT", "Title LWT", "Subject LWT", null);
+        
+        boolean firstInsert = bookRepository.insertBookIfNotExists(book);
+        assertTrue("First insert should succeed", firstInsert);
+        
+        Book duplicateBook = new Book(bookId, "Different Author", "Different Title", "Different Subject", null);
+        boolean secondInsert = bookRepository.insertBookIfNotExists(duplicateBook);
+        assertFalse("Second insert with same ID should fail", secondInsert);
+        
+        Book retrieved = bookRepository.getBookById(bookId);
+        assertEquals("Original author should be preserved", "Author LWT", retrieved.getAuthor());
+        assertEquals("Original title should be preserved", "Title LWT", retrieved.getTitle());
+    }
+
+    @Test
+    public void whenUsingLightweightTransactionUpdate_thenConditionalUpdateWorks() {
+        bookRepository.deleteTable();
+        bookRepository.createPublisherUDT();
+        bookRepository.createTable();
+        
+        UUID existingBookId = UUID.randomUUID();
+        UUID nonExistentBookId = UUID.randomUUID();
+        
+        Book existingBook = new Book(existingBookId, "Original Author", "Original Title", "Original Subject", null);
+        bookRepository.insertBook(existingBook);
+        
+        Book updateExisting = new Book(existingBookId, "Updated Author", "Updated Title", "Updated Subject", null);
+        boolean updateExistingResult = bookRepository.updateBookIfExists(updateExisting);
+        assertTrue("Update of existing book should succeed", updateExistingResult);
+        
+        Book updateNonExistent = new Book(nonExistentBookId, "Non Existent", "Non Existent", "Non Existent", null);
+        boolean updateNonExistentResult = bookRepository.updateBookIfExists(updateNonExistent);
+        assertFalse("Update of non-existent book should fail", updateNonExistentResult);
+        
+        Book retrieved = bookRepository.getBookById(existingBookId);
+        assertEquals("Book should be updated", "Updated Author", retrieved.getAuthor());
+        assertEquals("Book should be updated", "Updated Title", retrieved.getTitle());
+    }
 }

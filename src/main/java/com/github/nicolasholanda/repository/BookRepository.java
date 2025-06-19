@@ -10,6 +10,7 @@ import com.datastax.driver.core.UDTValue;
 import java.util.List;
 import java.util.UUID;
 import java.util.ArrayList;
+import com.datastax.driver.core.ResultSet;
 
 public class BookRepository {
 
@@ -163,5 +164,41 @@ public class BookRepository {
             ));
         }
         return books;
+    }
+
+    public boolean insertBookIfNotExists(Book book) {
+        String query = String.format("INSERT INTO %s.%s (id, author, title, subject, publisher) VALUES (?, ?, ?, ?, ?) IF NOT EXISTS;", KEYSPACE, TABLE_NAME);
+        UDTValue publisherUDT = null;
+        if (book.getPublisher() != null) {
+            publisherUDT = session.getCluster().getMetadata().getKeyspace(KEYSPACE).getUserType("publisher").newValue()
+                .setString("name", book.getPublisher().getName())
+                .setString("address", book.getPublisher().getAddress());
+        }
+        ResultSet result = session.execute(session.prepare(query).bind(
+                book.getId(),
+                book.getAuthor(),
+                book.getTitle(),
+                book.getSubject(),
+                publisherUDT
+        ));
+        return result.one().getBool("[applied]");
+    }
+
+    public boolean updateBookIfExists(Book book) {
+        String query = String.format("UPDATE %s.%s SET author = ?, title = ?, subject = ?, publisher = ? WHERE id = ? IF EXISTS;", KEYSPACE, TABLE_NAME);
+        UDTValue publisherUDT = null;
+        if (book.getPublisher() != null) {
+            publisherUDT = session.getCluster().getMetadata().getKeyspace(KEYSPACE).getUserType("publisher").newValue()
+                .setString("name", book.getPublisher().getName())
+                .setString("address", book.getPublisher().getAddress());
+        }
+        ResultSet result = session.execute(session.prepare(query).bind(
+                book.getAuthor(),
+                book.getTitle(),
+                book.getSubject(),
+                publisherUDT,
+                book.getId()
+        ));
+        return result.one().getBool("[applied]");
     }
 }
